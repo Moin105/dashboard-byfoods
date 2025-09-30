@@ -1,0 +1,268 @@
+'use client'
+
+import { useState } from 'react'
+import { useQuery, useMutation, useQueryClient } from 'react-query'
+import { motion } from 'framer-motion'
+import { Plus, Search, Edit, Trash2, Eye, EyeOff } from 'lucide-react'
+import { api } from '@/lib/api'
+import { Bar } from '@/lib/types'
+import { BarForm } from '@/components/BarForm'
+import { Modal } from '@/components/Modal'
+import toast from 'react-hot-toast'
+
+export default function BarsPage() {
+  const [searchTerm, setSearchTerm] = useState('')
+  const [showForm, setShowForm] = useState(false)
+  const [editingBar, setEditingBar] = useState<Bar | null>(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const queryClient = useQueryClient()
+
+  const { data: barsData, isLoading } = useQuery(
+    ['bars', currentPage, searchTerm],
+    () => {
+      const params = new URLSearchParams({
+        page: currentPage.toString(),
+        limit: '10',
+      })
+      if (searchTerm) {
+        return api.get(`/bars/search?q=${searchTerm}`).then(res => ({ data: res.data, total: res.data.length }))
+      }
+      return api.get(`/bars?${params}`).then(res => res.data)
+    }
+  )
+
+  const deleteMutation = useMutation(
+    (id: number) => api.delete(`/bars/${id}`),
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries('bars')
+        toast.success('Bar deleted successfully')
+      },
+      onError: () => {
+        toast.error('Failed to delete bar')
+      },
+    }
+  )
+
+  const toggleActiveMutation = useMutation(
+    ({ id, isActive }: { id: number; isActive: boolean }) => 
+      api.patch(`/bars/${id}`, { isActive: !isActive }),
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries('bars')
+        toast.success('Bar status updated')
+      },
+      onError: () => {
+        toast.error('Failed to update bar status')
+      },
+    }
+  )
+
+  const handleEdit = (bar: Bar) => {
+    setEditingBar(bar)
+    setShowForm(true)
+  }
+
+  const handleDelete = (id: number) => {
+    if (confirm('Are you sure you want to delete this bar?')) {
+      deleteMutation.mutate(id)
+    }
+  }
+
+  const handleToggleActive = (bar: Bar) => {
+    toggleActiveMutation.mutate({ id: bar.id, isActive: bar.isActive })
+  }
+
+  const handleFormClose = () => {
+    setShowForm(false)
+    setEditingBar(null)
+  }
+
+  const handleFormSuccess = () => {
+    queryClient.invalidateQueries('bars')
+    handleFormClose()
+    toast.success(editingBar ? 'Bar updated successfully' : 'Bar created successfully')
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Bars Management</h1>
+          <p className="text-gray-600">Manage bars and lounges</p>
+        </div>
+        <button
+          onClick={() => setShowForm(true)}
+          className="btn-primary"
+        >
+          <Plus className="h-5 w-5 mr-2" />
+          Add Bar
+        </button>
+      </div>
+
+      {/* Search and Filters */}
+      <div className="card">
+        <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex-1">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+              <input
+                type="text"
+                placeholder="Search bars..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="input-field pl-10"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Bars Table */}
+      <div className="card">
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Bar
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Type
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Location
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Rating
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Status
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {isLoading ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-4 text-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500 mx-auto"></div>
+                  </td>
+                </tr>
+              ) : barsData?.data?.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-4 text-center text-gray-500">
+                    No bars found
+                  </td>
+                </tr>
+              ) : (
+                barsData?.data?.map((bar: Bar) => (
+                  <tr key={bar.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <img
+                          src={bar.image}
+                          alt={bar.name}
+                          className="h-12 w-12 rounded-lg object-cover"
+                        />
+                        <div className="ml-4">
+                          <div className="text-sm font-medium text-gray-900">{bar.name}</div>
+                          <div className="text-sm text-gray-500">{bar.priceRange}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {bar.type}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {bar.location}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <div className="flex items-center">
+                        <span className="text-yellow-500">★</span>
+                        <span className="ml-1">{bar.rating}</span>
+                        <span className="ml-1 text-gray-500">({bar.reviews})</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                        bar.isActive 
+                          ? 'bg-green-100 text-green-800' 
+                          : 'bg-red-100 text-red-800'
+                      }`}>
+                        {bar.isActive ? 'Active' : 'Inactive'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <div className="flex space-x-2">
+                        <button
+                          onClick={() => handleEdit(bar)}
+                          className="text-primary-600 hover:text-primary-900"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => handleToggleActive(bar)}
+                          className="text-gray-600 hover:text-gray-900"
+                        >
+                          {bar.isActive ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
+                        <button
+                          onClick={() => handleDelete(bar.id)}
+                          className="text-red-600 hover:text-red-900"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Pagination */}
+        {barsData?.total > 10 && (
+          <div className="px-6 py-3 border-t border-gray-200 flex items-center justify-between">
+            <div className="text-sm text-gray-700">
+              Showing {((currentPage - 1) * 10) + 1} to {Math.min(currentPage * 10, barsData.total)} of {barsData.total} results
+            </div>
+            <div className="flex space-x-2">
+              <button
+                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                disabled={currentPage === 1}
+                className="btn-secondary disabled:opacity-50"
+              >
+                Previous
+              </button>
+              <button
+                onClick={() => setCurrentPage(prev => prev + 1)}
+                disabled={currentPage * 10 >= barsData.total}
+                className="btn-secondary disabled:opacity-50"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Bar Form Modal */}
+      <Modal
+        isOpen={showForm}
+        onClose={handleFormClose}
+        title={editingBar ? 'Edit Bar' : 'Add New Bar'}
+      >
+        <BarForm
+          bar={editingBar}
+          onSuccess={handleFormSuccess}
+          onCancel={handleFormClose}
+        />
+      </Modal>
+    </div>
+  )
+}
