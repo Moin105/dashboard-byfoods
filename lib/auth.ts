@@ -30,6 +30,29 @@ export const auth = {
     return response.json()
   },
 
+  register: async (
+    email: string,
+    password: string,
+    firstName: string,
+    lastName: string,
+    role: string
+  ): Promise<User> => {
+    const response = await fetch(`${API_BASE_URL}/auth/register`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email, password, firstName, lastName, role }),
+    })
+
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.message || 'Registration failed')
+    }
+
+    return response.json()
+  },
+
   logout: () => {
     localStorage.removeItem('auth_token')
     localStorage.removeItem('user')

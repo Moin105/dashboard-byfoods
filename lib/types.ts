@@ -107,3 +107,27 @@ export interface PaginationParams {
   page?: number
   limit?: number
 }
+
+export interface Order {
+  id: number
+  orderType: 'bar_reservation' | 'distillery_tour' | 'event_booking'
+  status: 'pending' | 'confirmed' | 'completed' | 'cancelled'
+  customerName: string
+  customerEmail: string
+  customerPhone?: string
+  barId?: number
+  distilleryId?: number
+  eventId?: number
+  bookingDate?: string
+  bookingTime?: string
+  numberOfGuests: number
+  totalAmount: number
+  paymentMethod?: string
+  isPaid: boolean
+  specialRequests?: string
+  createdAt: string
+  updatedAt: string
+  bar?: Bar
+  distillery?: Distillery
+  event?: Event
+}

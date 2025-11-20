@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { Eye, EyeOff, Lock, Mail } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -99,9 +100,18 @@ export default function LoginPage() {
             </button>
           </form>
 
-          <div className="mt-6 p-4 bg-gray-50 rounded-lg">
+          <div className="mt-6 text-center">
+            <p className="text-sm text-gray-600">
+              Don't have an account?{' '}
+              <Link href="/register" className="text-primary-600 hover:text-primary-700 font-medium">
+                Register here
+              </Link>
+            </p>
+          </div>
+
+          <div className="mt-4 p-4 bg-gray-50 rounded-lg">
             <p className="text-sm text-gray-600 text-center">
-              <strong>Default Credentials:</strong><br />
+              <strong>Default Admin Credentials:</strong><br />
               Email: admin@byfoods.com<br />
               Password: admin123
             </p>

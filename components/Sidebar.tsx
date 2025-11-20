@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { motion } from 'framer-motion'
@@ -15,10 +15,12 @@ import {
   Users,
   Settings,
   Menu,
-  X
+  X,
+  ShoppingCart
 } from 'lucide-react'
+import { auth } from '@/lib/auth'
 
-const navigation = [
+const adminNavigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Homepage', href: '/dashboard/homepage', icon: Home },
   { name: 'Bars', href: '/dashboard/bars', icon: BarChart3 },
@@ -29,9 +31,58 @@ const navigation = [
   { name: 'Settings', href: '/dashboard/settings', icon: Settings },
 ]
 
+const getRoleNavigation = (role: string) => {
+  switch (role) {
+    case 'bar':
+      return [
+        { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+        { name: 'My Bars', href: '/dashboard/bars', icon: BarChart3 },
+        { name: 'Orders', href: '/dashboard/orders', icon: ShoppingCart },
+        { name: 'Settings', href: '/dashboard/settings', icon: Settings },
+      ]
+    case 'distillery':
+      return [
+        { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+        { name: 'My Distilleries', href: '/dashboard/distilleries', icon: MapPin },
+        { name: 'Orders', href: '/dashboard/orders', icon: ShoppingCart },
+        { name: 'Settings', href: '/dashboard/settings', icon: Settings },
+      ]
+    case 'tour_operator':
+    case 'event_host':
+      return [
+        { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+        { name: 'My Events', href: '/dashboard/events', icon: Calendar },
+        { name: 'Orders', href: '/dashboard/orders', icon: ShoppingCart },
+        { name: 'Settings', href: '/dashboard/settings', icon: Settings },
+      ]
+    default:
+      return [
+        ...adminNavigation,
+        { name: 'Orders', href: '/dashboard/orders', icon: ShoppingCart },
+      ]
+  }
+}
+
 export function Sidebar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [navigation, setNavigation] = useState(adminNavigation)
+  const [userRole, setUserRole] = useState<string>('Admin')
   const pathname = usePathname()
+
+  useEffect(() => {
+    const user = auth.getUser()
+    if (user) {
+      setNavigation(getRoleNavigation(user.role))
+      const roleLabels: Record<string, string> = {
+        admin: 'Admin',
+        bar: 'Bar Owner',
+        distillery: 'Distillery Owner',
+        tour_operator: 'Tour Operator',
+        event_host: 'Event Host',
+      }
+      setUserRole(roleLabels[user.role] || 'Admin')
+    }
+  }, [])
 
   return (
     <>
@@ -68,7 +119,7 @@ export function Sidebar() {
               </div>
               <div className="ml-3">
                 <h1 className="text-lg font-semibold text-gray-900">ByFoods CMS</h1>
-                <p className="text-xs text-gray-500">Admin Dashboard</p>
+                <p className="text-xs text-gray-500">{userRole} Dashboard</p>
               </div>
             </div>
           </div>
@@ -115,7 +166,7 @@ export function Sidebar() {
               </div>
               <div className="ml-3">
                 <h1 className="text-lg font-semibold text-gray-900">ByFoods CMS</h1>
-                <p className="text-xs text-gray-500">Admin Dashboard</p>
+                <p className="text-xs text-gray-500">{userRole} Dashboard</p>
               </div>
             </div>
           </div>

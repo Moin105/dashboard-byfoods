@@ -20,31 +20,14 @@ export default function MediaPage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const queryClient = useQueryClient()
 
-  // Mock data for demonstration - in real app, you'd fetch from API
+  // Fetch media files from API
   const { data: mediaFiles = [], isLoading } = useQuery(
     'media-files',
-    () => {
-      // This would be replaced with actual API call
-      return Promise.resolve([
-        {
-          filename: 'bar-image-1.jpg',
-          url: '/uploads/bar-image-1.jpg',
-          size: 1024000,
-          uploadedAt: '2024-01-15T10:30:00Z'
-        },
-        {
-          filename: 'event-banner.png',
-          url: '/uploads/event-banner.png',
-          size: 2048000,
-          uploadedAt: '2024-01-14T15:45:00Z'
-        },
-        {
-          filename: 'distillery-photo.jpg',
-          url: '/uploads/distillery-photo.jpg',
-          size: 1536000,
-          uploadedAt: '2024-01-13T09:20:00Z'
-        }
-      ])
+    () => api.get('/upload/media').then(res => res.data),
+    {
+      onError: () => {
+        toast.error('Failed to load media files')
+      }
     }
   )
 
@@ -72,7 +55,7 @@ export default function MediaPage() {
   )
 
   const deleteMutation = useMutation(
-    (filename: string) => api.delete(`/upload/image/${filename}`),
+    (publicId: string) => api.delete(`/upload/image/${publicId}`),
     {
       onSuccess: () => {
         queryClient.invalidateQueries('media-files')
