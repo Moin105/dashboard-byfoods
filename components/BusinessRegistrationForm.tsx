@@ -2,8 +2,9 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Upload, X, Check, ArrowLeft, ArrowRight } from 'lucide-react'
+import { Upload, X, Check, ArrowLeft, ArrowRight, LogIn } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { api } from '@/lib/api'
 
@@ -276,6 +277,17 @@ export default function BusinessRegistrationForm() {
   return (
     <div className="min-h-screen bg-gray-900 text-white">
       <div className="max-w-4xl mx-auto px-4 py-8">
+        {/* Back to Login Link */}
+        <div className="mb-6">
+          <Link
+            href="/login"
+            className="inline-flex items-center text-sm text-gray-400 hover:text-primary-500 transition-colors"
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Login
+          </Link>
+        </div>
+
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-4">
@@ -806,6 +818,20 @@ export default function BusinessRegistrationForm() {
               {loading ? 'Submitting...' : 'Finish setup'}
             </button>
           )}
+        </div>
+
+        {/* Login Link at Bottom */}
+        <div className="mt-8 text-center">
+          <p className="text-gray-400 text-sm">
+            Already have an account?{' '}
+            <Link
+              href="/login"
+              className="text-primary-500 hover:text-primary-400 font-semibold inline-flex items-center"
+            >
+              <LogIn className="h-4 w-4 mr-1" />
+              Login here
+            </Link>
+          </p>
         </div>
       </div>
     </div>
