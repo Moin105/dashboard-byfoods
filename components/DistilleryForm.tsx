@@ -28,8 +28,6 @@ interface DistilleryFormData {
   website: string
   operatingHours: Record<string, string>
   products: string[]
-  rating: number
-  reviews: number
   isOpen: boolean
   isActive: boolean
 }
@@ -55,8 +53,6 @@ export function DistilleryForm({ distillery, onSuccess, onCancel }: DistilleryFo
       phone: distillery?.phone || '',
       website: distillery?.website || '',
       operatingHours: distillery?.operatingHours || {},
-      rating: distillery?.rating || 0,
-      reviews: distillery?.reviews || 0,
       isOpen: distillery?.isOpen || true,
       isActive: distillery?.isActive || true,
     }
@@ -242,29 +238,6 @@ export function DistilleryForm({ distillery, onSuccess, onCancel }: DistilleryFo
               </label>
             </div>
             {errors.image && <p className="text-red-500 text-sm mt-1">{errors.image.message}</p>}
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="label">Rating</label>
-              <input
-                {...register('rating', { valueAsNumber: true })}
-                type="number"
-                step="0.1"
-                min="0"
-                max="5"
-                className="input-field"
-              />
-            </div>
-            <div>
-              <label className="label">Reviews</label>
-              <input
-                {...register('reviews', { valueAsNumber: true })}
-                type="number"
-                min="0"
-                className="input-field"
-              />
-            </div>
           </div>
 
           <div className="space-y-2">

@@ -1,29 +1,37 @@
 'use client'
 
-import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from 'react-query'
 import { useParams, useRouter } from 'next/navigation'
-import { motion } from 'framer-motion'
-import { ArrowLeft, CheckCircle, XCircle, Clock, Mail, Phone, Calendar, Users, DollarSign, MapPin } from 'lucide-react'
+import {
+  ArrowLeft,
+  Calendar,
+  CheckCircle,
+  Clock,
+  Mail,
+  MapPin,
+  Phone,
+  Receipt,
+  User,
+  Users,
+  XCircle,
+} from 'lucide-react'
 import { api } from '@/lib/api'
-import { Order } from '@/lib/types'
+import { orderBookingFeeBreakdown } from '@/lib/booking-fees'
 import toast from 'react-hot-toast'
 
 export default function OrderDetailPage() {
   const params = useParams()
   const router = useRouter()
   const queryClient = useQueryClient()
-  const [statusFilter, setStatusFilter] = useState<string>('')
 
   const { data: order, isLoading } = useQuery(
     ['order', params.id],
-    () => api.get(`/orders/${params.id}`).then(res => res.data),
-    { enabled: !!params.id }
+    () => api.get(`/orders/${params.id}`).then((res) => res.data),
+    { enabled: !!params.id },
   )
 
   const updateStatusMutation = useMutation(
-    ({ status }: { status: string }) =>
-      api.patch(`/orders/${params.id}/status`, { status }),
+    ({ status }: { status: string }) => api.patch(`/orders/${params.id}/status`, { status }),
     {
       onSuccess: () => {
         queryClient.invalidateQueries(['order', params.id])
@@ -33,7 +41,7 @@ export default function OrderDetailPage() {
       onError: () => {
         toast.error('Failed to update order status')
       },
-    }
+    },
   )
 
   const handleStatusUpdate = (status: string) => {
@@ -42,247 +50,215 @@ export default function OrderDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
+      <div className="flex min-h-[360px] items-center justify-center">
+        <div className="h-12 w-12 animate-spin rounded-full border-4 border-gray-200 border-t-gray-900" />
       </div>
     )
   }
 
   if (!order) {
     return (
-      <div className="text-center py-12">
-        <p className="text-gray-500">Order not found</p>
-        <button
-          onClick={() => router.push('/dashboard/orders')}
-          className="mt-4 text-primary-600 hover:text-primary-700"
-        >
-          Back to Orders
-        </button>
+      <div className="flex min-h-[360px] items-center justify-center">
+        <div className="rounded-lg border border-gray-200 bg-white p-8 text-center shadow-sm">
+          <p className="text-gray-600">Order not found</p>
+          <button onClick={() => router.push('/dashboard/orders')} className="btn-primary mt-4">
+            Back to Orders
+          </button>
+        </div>
       </div>
     )
   }
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'confirmed':
-        return 'bg-green-100 text-green-800'
-      case 'pending':
-        return 'bg-yellow-100 text-yellow-800'
-      case 'completed':
-        return 'bg-blue-100 text-blue-800'
-      case 'cancelled':
-        return 'bg-red-100 text-red-800'
-      default:
-        return 'bg-gray-100 text-gray-800'
-    }
-  }
-
-  const getOrderTypeLabel = (type: string) => {
-    switch (type) {
-      case 'bar_reservation':
-        return 'Bar Reservation'
-      case 'distillery_tour':
-        return 'Distillery Tour'
-      case 'event_booking':
-        return 'Event Booking'
-      default:
-        return type
-    }
-  }
+  const fee = orderBookingFeeBreakdown(order.totalAmount, order.numberOfGuests)
+  const venueName = order.bar?.name || order.distillery?.name || order.event?.name || 'Unassigned'
+  const venueLabel = order.bar ? 'Bar' : order.distillery ? 'Distillery' : order.event ? 'Event' : 'Listing'
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center space-x-4">
-        <button
-          onClick={() => router.push('/dashboard/orders')}
-          className="p-2 hover:bg-gray-100 rounded-lg"
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </button>
-        <h1 className="text-3xl font-bold text-gray-900">Order Details</h1>
-        <span className={`px-3 py-1 text-sm font-semibold rounded-full ${getStatusColor(order.status)}`}>
-          {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
-        </span>
+      <div className="flex flex-col gap-4 rounded-lg border border-gray-200 bg-white p-6 shadow-sm md:flex-row md:items-center md:justify-between">
+        <div className="flex items-start gap-4">
+          <button
+            type="button"
+            onClick={() => router.push('/dashboard/orders')}
+            className="mt-1 inline-flex h-9 w-9 items-center justify-center rounded-md border border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+            title="Back to orders"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </button>
+          <div>
+            <div className="flex flex-wrap items-center gap-3">
+              <h1 className="text-2xl font-bold text-gray-950">Order #{order.id}</h1>
+              <StatusBadge status={order.status} />
+            </div>
+            <p className="mt-1 text-sm text-gray-600">
+              {getOrderTypeLabel(order.orderType)} for {venueName}
+            </p>
+          </div>
+        </div>
+        <div className="text-left md:text-right">
+          <p className="text-sm text-gray-500">Customer total</p>
+          <p className="text-2xl font-semibold text-gray-950">${fee.customerChargedTotal.toFixed(2)}</p>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Main Content */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Customer Information */}
-          <div className="bg-white p-6 rounded-lg shadow-sm">
-            <h2 className="text-xl font-semibold mb-4">Customer Information</h2>
-            <div className="space-y-4">
-              <div className="flex items-center space-x-3">
-                <Users className="h-5 w-5 text-gray-400" />
-                <div>
-                  <div className="text-sm text-gray-500">Name</div>
-                  <div className="font-medium text-gray-900">{order.customerName}</div>
-                </div>
-              </div>
-              <div className="flex items-center space-x-3">
-                <Mail className="h-5 w-5 text-gray-400" />
-                <div>
-                  <div className="text-sm text-gray-500">Email</div>
-                  <div className="font-medium text-gray-900">{order.customerEmail}</div>
-                </div>
-              </div>
-              {order.customerPhone && (
-                <div className="flex items-center space-x-3">
-                  <Phone className="h-5 w-5 text-gray-400" />
-                  <div>
-                    <div className="text-sm text-gray-500">Phone</div>
-                    <div className="font-medium text-gray-900">{order.customerPhone}</div>
-                  </div>
-                </div>
-              )}
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="space-y-6">
+          <SectionCard title="Customer">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+              <InfoItem icon={User} label="Name" value={order.customerName} />
+              <InfoItem icon={Mail} label="Email" value={order.customerEmail} />
+              <InfoItem icon={Phone} label="Phone" value={order.customerPhone || 'Not provided'} />
             </div>
-          </div>
+          </SectionCard>
 
-          {/* Booking Details */}
-          <div className="bg-white p-6 rounded-lg shadow-sm">
-            <h2 className="text-xl font-semibold mb-4">Booking Details</h2>
-            <div className="space-y-4">
-              <div>
-                <div className="text-sm text-gray-500">Order Type</div>
-                <div className="font-medium text-gray-900">{getOrderTypeLabel(order.orderType)}</div>
-              </div>
-              {order.bar && (
-                <div className="flex items-center space-x-3">
-                  <MapPin className="h-5 w-5 text-gray-400" />
-                  <div>
-                    <div className="text-sm text-gray-500">Bar</div>
-                    <div className="font-medium text-gray-900">{order.bar.name}</div>
-                  </div>
-                </div>
-              )}
-              {order.distillery && (
-                <div className="flex items-center space-x-3">
-                  <MapPin className="h-5 w-5 text-gray-400" />
-                  <div>
-                    <div className="text-sm text-gray-500">Distillery</div>
-                    <div className="font-medium text-gray-900">{order.distillery.name}</div>
-                  </div>
-                </div>
-              )}
-              {order.event && (
-                <div className="flex items-center space-x-3">
-                  <MapPin className="h-5 w-5 text-gray-400" />
-                  <div>
-                    <div className="text-sm text-gray-500">Event</div>
-                    <div className="font-medium text-gray-900">{order.event.name}</div>
-                  </div>
-                </div>
-              )}
-              {order.bookingDate && (
-                <div className="flex items-center space-x-3">
-                  <Calendar className="h-5 w-5 text-gray-400" />
-                  <div>
-                    <div className="text-sm text-gray-500">Booking Date</div>
-                    <div className="font-medium text-gray-900">
-                      {new Date(order.bookingDate).toLocaleDateString()}
-                    </div>
-                  </div>
-                </div>
-              )}
-              {order.bookingTime && (
-                <div>
-                  <div className="text-sm text-gray-500">Time</div>
-                  <div className="font-medium text-gray-900">{order.bookingTime}</div>
-                </div>
-              )}
-              <div className="flex items-center space-x-3">
-                <Users className="h-5 w-5 text-gray-400" />
-                <div>
-                  <div className="text-sm text-gray-500">Number of Guests</div>
-                  <div className="font-medium text-gray-900">{order.numberOfGuests}</div>
-                </div>
-              </div>
+          <SectionCard title="Booking">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <InfoItem icon={Receipt} label="Order Type" value={getOrderTypeLabel(order.orderType)} />
+              <InfoItem icon={MapPin} label={venueLabel} value={venueName} />
+              <InfoItem
+                icon={Calendar}
+                label="Booking Date"
+                value={order.bookingDate ? new Date(order.bookingDate).toLocaleDateString() : 'Not scheduled'}
+              />
+              <InfoItem icon={Clock} label="Time" value={order.bookingTime || 'Not scheduled'} />
+              <InfoItem icon={Users} label="Guests" value={String(order.numberOfGuests)} />
             </div>
-          </div>
+          </SectionCard>
 
-          {/* Special Requests */}
           {order.specialRequests && (
-            <div className="bg-white p-6 rounded-lg shadow-sm">
-              <h2 className="text-xl font-semibold mb-4">Special Requests</h2>
-              <p className="text-gray-700">{order.specialRequests}</p>
-            </div>
+            <SectionCard title="Special Requests">
+              <p className="text-sm leading-6 text-gray-700">{order.specialRequests}</p>
+            </SectionCard>
           )}
         </div>
 
-        {/* Sidebar */}
-        <div className="space-y-6">
-          {/* Order Summary */}
-          <div className="bg-white p-6 rounded-lg shadow-sm">
-            <h2 className="text-xl font-semibold mb-4">Order Summary</h2>
-            <div className="space-y-3">
-              <div className="flex justify-between">
-                <span className="text-gray-600">Order ID</span>
-                <span className="font-medium">#{order.id}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Total Amount</span>
-                <span className="font-bold text-lg">${order.totalAmount}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Payment Status</span>
-                <span className={order.isPaid ? 'text-green-600 font-medium' : 'text-yellow-600 font-medium'}>
-                  {order.isPaid ? 'Paid' : 'Unpaid'}
-                </span>
-              </div>
-              {order.paymentMethod && (
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Payment Method</span>
-                  <span className="font-medium">{order.paymentMethod}</span>
-                </div>
-              )}
-              <div className="flex justify-between">
-                <span className="text-gray-600">Created</span>
-                <span className="font-medium">
-                  {new Date(order.createdAt).toLocaleDateString()}
-                </span>
-              </div>
+        <aside className="space-y-6">
+          <SectionCard title="Payment Summary">
+            <div className="space-y-3 text-sm">
+              <SummaryRow label="Ticket subtotal" value={`$${fee.ticketSubtotal.toFixed(2)}`} />
+              <SummaryRow label="Booking fee" value={`$${fee.bookingFeeTotal.toFixed(2)}`} />
+              <SummaryRow label="Customer total" value={`$${fee.customerChargedTotal.toFixed(2)}`} strong />
+              <div className="border-t border-gray-200 pt-3" />
+              <SummaryRow label="Payment status" value={order.isPaid ? 'Paid' : 'Unpaid'} tone={order.isPaid ? 'success' : 'warning'} />
+              <SummaryRow label="Payment method" value={order.paymentMethod || 'Not recorded'} />
+              <SummaryRow label="Created" value={new Date(order.createdAt).toLocaleDateString()} />
             </div>
-          </div>
+          </SectionCard>
 
-          {/* Status Management */}
-          <div className="bg-white p-6 rounded-lg shadow-sm">
-            <h2 className="text-xl font-semibold mb-4">Update Status</h2>
-            <div className="space-y-2">
+          <SectionCard title="Status Actions">
+            <div className="space-y-3">
               {order.status === 'pending' && (
                 <button
                   onClick={() => handleStatusUpdate('confirmed')}
                   disabled={updateStatusMutation.isLoading}
-                  className="w-full flex items-center justify-center space-x-2 bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors disabled:opacity-50"
+                  className="btn-primary w-full bg-emerald-700 hover:bg-emerald-800"
                 >
-                  <CheckCircle className="h-5 w-5" />
-                  <span>Confirm Order</span>
+                  <CheckCircle className="h-4 w-4" />
+                  Confirm Order
                 </button>
               )}
               {order.status !== 'completed' && order.status !== 'cancelled' && (
                 <button
                   onClick={() => handleStatusUpdate('completed')}
                   disabled={updateStatusMutation.isLoading}
-                  className="w-full flex items-center justify-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors disabled:opacity-50"
+                  className="btn-primary w-full"
                 >
-                  <Clock className="h-5 w-5" />
-                  <span>Mark as Completed</span>
+                  <Clock className="h-4 w-4" />
+                  Mark Completed
                 </button>
               )}
               {order.status !== 'cancelled' && (
                 <button
                   onClick={() => handleStatusUpdate('cancelled')}
                   disabled={updateStatusMutation.isLoading}
-                  className="w-full flex items-center justify-center space-x-2 bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors disabled:opacity-50"
+                  className="btn-danger w-full"
                 >
-                  <XCircle className="h-5 w-5" />
-                  <span>Cancel Order</span>
+                  <XCircle className="h-4 w-4" />
+                  Cancel Order
                 </button>
               )}
             </div>
-          </div>
-        </div>
+          </SectionCard>
+        </aside>
       </div>
     </div>
   )
 }
 
+function SectionCard({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+      <h2 className="text-lg font-semibold text-gray-950">{title}</h2>
+      <div className="mt-5">{children}</div>
+    </section>
+  )
+}
+
+function InfoItem({ icon: Icon, label, value }: { icon: any; label: string; value: string }) {
+  return (
+    <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+      <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
+        <Icon className="h-4 w-4" />
+        {label}
+      </div>
+      <p className="mt-2 break-words text-sm font-semibold text-gray-950">{value}</p>
+    </div>
+  )
+}
+
+function SummaryRow({
+  label,
+  value,
+  strong,
+  tone,
+}: {
+  label: string
+  value: string
+  strong?: boolean
+  tone?: 'success' | 'warning'
+}) {
+  return (
+    <div className="flex items-center justify-between gap-4">
+      <span className="text-gray-600">{label}</span>
+      <span
+        className={`text-right ${strong ? 'text-base font-semibold text-gray-950' : 'font-medium text-gray-900'} ${
+          tone === 'success' ? 'text-emerald-700' : tone === 'warning' ? 'text-amber-700' : ''
+        }`}
+      >
+        {value}
+      </span>
+    </div>
+  )
+}
+
+function StatusBadge({ status }: { status: string }) {
+  const color =
+    status === 'confirmed'
+      ? 'bg-emerald-50 text-emerald-700 ring-emerald-200'
+      : status === 'pending'
+      ? 'bg-amber-50 text-amber-700 ring-amber-200'
+      : status === 'completed'
+      ? 'bg-blue-50 text-blue-700 ring-blue-200'
+      : status === 'cancelled'
+      ? 'bg-red-50 text-red-700 ring-red-200'
+      : 'bg-gray-50 text-gray-700 ring-gray-200'
+
+  return (
+    <span className={`rounded-full px-3 py-1 text-xs font-semibold capitalize ring-1 ${color}`}>
+      {status}
+    </span>
+  )
+}
+
+function getOrderTypeLabel(type: string) {
+  switch (type) {
+    case 'bar_reservation':
+      return 'Bar Reservation'
+    case 'distillery_tour':
+      return 'Distillery Tour'
+    case 'event_booking':
+      return 'Event Booking'
+    default:
+      return type
+  }
+}

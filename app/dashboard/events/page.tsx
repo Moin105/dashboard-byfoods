@@ -1,21 +1,23 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useQuery, useMutation, useQueryClient } from 'react-query'
 import { motion } from 'framer-motion'
-import { Plus, Search, Edit, Trash2, Eye, EyeOff, Star } from 'lucide-react'
+import { Plus, Search, Settings, Trash2, Eye, EyeOff, Star } from 'lucide-react'
 import { api } from '@/lib/api'
+import { auth } from '@/lib/auth'
+import { isSuperAdmin } from '@/lib/roles'
 import { Event } from '@/lib/types'
-import { EventForm } from '@/components/EventForm'
-import { Modal } from '@/components/Modal'
 import toast from 'react-hot-toast'
 
 export default function EventsPage() {
   const [searchTerm, setSearchTerm] = useState('')
-  const [showForm, setShowForm] = useState(false)
-  const [editingEvent, setEditingEvent] = useState<Event | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
+  const router = useRouter()
   const queryClient = useQueryClient()
+  const canCreate = isSuperAdmin(auth.getUser()?.role)
 
   const { data: eventsData, isLoading } = useQuery(
     ['events', currentPage, searchTerm],
@@ -72,11 +74,6 @@ export default function EventsPage() {
     }
   )
 
-  const handleEdit = (event: Event) => {
-    setEditingEvent(event)
-    setShowForm(true)
-  }
-
   const handleDelete = (id: number) => {
     if (confirm('Are you sure you want to delete this event?')) {
       deleteMutation.mutate(id)
@@ -91,15 +88,8 @@ export default function EventsPage() {
     toggleFeaturedMutation.mutate({ id: event.id, isFeatured: event.isFeatured })
   }
 
-  const handleFormClose = () => {
-    setShowForm(false)
-    setEditingEvent(null)
-  }
-
-  const handleFormSuccess = () => {
-    queryClient.invalidateQueries('events')
-    handleFormClose()
-    toast.success(editingEvent ? 'Event updated successfully' : 'Event created successfully')
+  const handleCreateNew = () => {
+    router.push('/dashboard/events/new')
   }
 
   const formatDate = (dateString: string) => {
@@ -118,13 +108,15 @@ export default function EventsPage() {
           <h1 className="text-2xl font-bold text-gray-900">Events Management</h1>
           <p className="text-gray-600">Manage events and activities</p>
         </div>
-        <button
-          onClick={() => setShowForm(true)}
-          className="btn-primary"
-        >
-          <Plus className="h-5 w-5 mr-2" />
-          Add Event
-        </button>
+        {canCreate && (
+          <button
+            onClick={handleCreateNew}
+            className="btn-primary"
+          >
+            <Plus className="h-5 w-5 mr-2" />
+            Add Event
+          </button>
+        )}
       </div>
 
       {/* Search and Filters */}
@@ -227,13 +219,13 @@ export default function EventsPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div className="flex space-x-2">
-                        <button
-                          onClick={() => handleEdit(event)}
+                        <Link
+                          href={`/dashboard/events/${event.id}`}
                           className="text-primary-600 hover:text-primary-900"
-                          title="Edit"
+                          title="Edit event details"
                         >
-                          <Edit className="h-4 w-4" />
-                        </button>
+                          <Settings className="h-4 w-4" />
+                        </Link>
                         <button
                           onClick={() => handleToggleFeatured(event)}
                           className={`${event.isFeatured ? 'text-yellow-600' : 'text-gray-400'} hover:text-yellow-600`}
@@ -289,20 +281,6 @@ export default function EventsPage() {
           </div>
         )}
       </div>
-
-      {/* Event Form Modal */}
-      <Modal
-        isOpen={showForm}
-        onClose={handleFormClose}
-        title={editingEvent ? 'Edit Event' : 'Add New Event'}
-        size="xl"
-      >
-        <EventForm
-          event={editingEvent}
-          onSuccess={handleFormSuccess}
-          onCancel={handleFormClose}
-        />
-      </Modal>
     </div>
   )
 }

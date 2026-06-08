@@ -1,21 +1,23 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useQuery, useMutation, useQueryClient } from 'react-query'
 import { motion } from 'framer-motion'
-import { Plus, Search, Edit, Trash2, Eye, EyeOff } from 'lucide-react'
+import { Plus, Search, Settings, Trash2, Eye, EyeOff } from 'lucide-react'
 import { api } from '@/lib/api'
+import { auth } from '@/lib/auth'
+import { isSuperAdmin } from '@/lib/roles'
 import { Distillery } from '@/lib/types'
-import { DistilleryForm } from '@/components/DistilleryForm'
-import { Modal } from '@/components/Modal'
 import toast from 'react-hot-toast'
 
 export default function DistilleriesPage() {
   const [searchTerm, setSearchTerm] = useState('')
-  const [showForm, setShowForm] = useState(false)
-  const [editingDistillery, setEditingDistillery] = useState<Distillery | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
+  const router = useRouter()
   const queryClient = useQueryClient()
+  const canCreate = isSuperAdmin(auth.getUser()?.role)
 
   const { data: distilleriesData, isLoading } = useQuery(
     ['distilleries', currentPage, searchTerm],
@@ -58,11 +60,6 @@ export default function DistilleriesPage() {
     }
   )
 
-  const handleEdit = (distillery: Distillery) => {
-    setEditingDistillery(distillery)
-    setShowForm(true)
-  }
-
   const handleDelete = (id: number) => {
     if (confirm('Are you sure you want to delete this distillery?')) {
       deleteMutation.mutate(id)
@@ -73,15 +70,8 @@ export default function DistilleriesPage() {
     toggleActiveMutation.mutate({ id: distillery.id, isActive: distillery.isActive })
   }
 
-  const handleFormClose = () => {
-    setShowForm(false)
-    setEditingDistillery(null)
-  }
-
-  const handleFormSuccess = () => {
-    queryClient.invalidateQueries('distilleries')
-    handleFormClose()
-    toast.success(editingDistillery ? 'Distillery updated successfully' : 'Distillery created successfully')
+  const handleCreateNew = () => {
+    router.push('/dashboard/distilleries/new')
   }
 
   return (
@@ -92,13 +82,15 @@ export default function DistilleriesPage() {
           <h1 className="text-2xl font-bold text-gray-900">Distilleries Management</h1>
           <p className="text-gray-600">Manage distilleries and craft spirit producers</p>
         </div>
-        <button
-          onClick={() => setShowForm(true)}
-          className="btn-primary"
-        >
-          <Plus className="h-5 w-5 mr-2" />
-          Add Distillery
-        </button>
+        {canCreate && (
+          <button
+            onClick={handleCreateNew}
+            className="btn-primary"
+          >
+            <Plus className="h-5 w-5 mr-2" />
+            Add Distillery
+          </button>
+        )}
       </div>
 
       {/* Search and Filters */}
@@ -138,7 +130,7 @@ export default function DistilleriesPage() {
                   Established
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Rating
+                  Products
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Status
@@ -187,11 +179,7 @@ export default function DistilleriesPage() {
                       {distillery.established}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      <div className="flex items-center">
-                        <span className="text-yellow-500">★</span>
-                        <span className="ml-1">{distillery.rating}</span>
-                        <span className="ml-1 text-gray-500">({distillery.reviews})</span>
-                      </div>
+                      {distillery.products?.length || 0}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
@@ -204,21 +192,24 @@ export default function DistilleriesPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div className="flex space-x-2">
-                        <button
-                          onClick={() => handleEdit(distillery)}
+                        <Link
+                          href={`/dashboard/distilleries/${distillery.id}`}
                           className="text-primary-600 hover:text-primary-900"
+                          title="Edit distillery details"
                         >
-                          <Edit className="h-4 w-4" />
-                        </button>
+                          <Settings className="h-4 w-4" />
+                        </Link>
                         <button
                           onClick={() => handleToggleActive(distillery)}
                           className="text-gray-600 hover:text-gray-900"
+                          title={distillery.isActive ? 'Disable' : 'Enable'}
                         >
                           {distillery.isActive ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                         </button>
                         <button
                           onClick={() => handleDelete(distillery.id)}
                           className="text-red-600 hover:text-red-900"
+                          title="Delete distillery"
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>
@@ -256,20 +247,6 @@ export default function DistilleriesPage() {
           </div>
         )}
       </div>
-
-      {/* Distillery Form Modal */}
-      <Modal
-        isOpen={showForm}
-        onClose={handleFormClose}
-        title={editingDistillery ? 'Edit Distillery' : 'Add New Distillery'}
-        size="xl"
-      >
-        <DistilleryForm
-          distillery={editingDistillery}
-          onSuccess={handleFormSuccess}
-          onCancel={handleFormClose}
-        />
-      </Modal>
     </div>
   )
 }

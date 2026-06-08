@@ -12,13 +12,45 @@ import {
   FileText,
   Home,
   Upload,
-  Users,
   Settings,
   Menu,
   X,
-  ShoppingCart
+  ShoppingCart,
+  DollarSign,
+  Star,
+  List,
+  ShieldCheck,
+  Edit,
+  Users,
+  Image as ImageIcon,
+  Store,
 } from 'lucide-react'
 import { auth } from '@/lib/auth'
+import { roleLabels } from '@/lib/roles'
+
+const isActiveRoute = (pathname: string, href: string) => {
+  if (href === '/dashboard') {
+    return pathname === href
+  }
+
+  return pathname === href || pathname.startsWith(`${href}/`)
+}
+
+const superAdminNavigation = [
+  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+  { name: 'Homepage', href: '/dashboard/homepage', icon: Home },
+  { name: 'Banners', href: '/dashboard/admin/banners', icon: ImageIcon },
+  { name: 'Vendors', href: '/dashboard/admin/vendors', icon: Store },
+  { name: 'Bars', href: '/dashboard/bars', icon: BarChart3 },
+  { name: 'Distilleries', href: '/dashboard/distilleries', icon: MapPin },
+  { name: 'Events', href: '/dashboard/events', icon: Calendar },
+  { name: 'Blogs', href: '/dashboard/blogs', icon: FileText },
+  { name: 'Media', href: '/dashboard/media', icon: Upload },
+  { name: 'Customers', href: '/dashboard/customers', icon: Users },
+  { name: 'Payout Review', href: '/dashboard/admin/payouts', icon: ShieldCheck },
+  { name: 'Orders', href: '/dashboard/orders', icon: ShoppingCart },
+  { name: 'Settings', href: '/dashboard/settings', icon: Settings },
+]
 
 const adminNavigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
@@ -27,32 +59,49 @@ const adminNavigation = [
   { name: 'Distilleries', href: '/dashboard/distilleries', icon: MapPin },
   { name: 'Events', href: '/dashboard/events', icon: Calendar },
   { name: 'Blogs', href: '/dashboard/blogs', icon: FileText },
-  { name: 'Media', href: '/dashboard/media', icon: Upload },
+  { name: 'Media Library', href: '/dashboard/media', icon: Upload },
+  { name: 'Customers', href: '/dashboard/customers', icon: Users },
+  { name: 'Orders', href: '/dashboard/orders', icon: ShoppingCart },
   { name: 'Settings', href: '/dashboard/settings', icon: Settings },
 ]
 
 const getRoleNavigation = (role: string) => {
   switch (role) {
+    case 'super_admin':
+      return superAdminNavigation
+    case 'admin':
+      return adminNavigation
     case 'bar':
       return [
         { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-        { name: 'My Bars', href: '/dashboard/bars', icon: BarChart3 },
+        { name: 'My Listing', href: '/dashboard/details', icon: Edit },
+        { name: 'Media', href: '/dashboard/media', icon: Upload },
+        { name: 'Menu', href: '/dashboard/menu', icon: List },
+        { name: 'Reviews', href: '/dashboard/reviews', icon: Star },
         { name: 'Orders', href: '/dashboard/orders', icon: ShoppingCart },
+        { name: 'Finance', href: '/dashboard/finance', icon: DollarSign },
         { name: 'Settings', href: '/dashboard/settings', icon: Settings },
       ]
     case 'distillery':
       return [
         { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-        { name: 'My Distilleries', href: '/dashboard/distilleries', icon: MapPin },
+        { name: 'My Listing', href: '/dashboard/details', icon: Edit },
+        { name: 'Media', href: '/dashboard/media', icon: Upload },
+        { name: 'Menu', href: '/dashboard/menu', icon: List },
+        { name: 'Reviews', href: '/dashboard/reviews', icon: Star },
         { name: 'Orders', href: '/dashboard/orders', icon: ShoppingCart },
+        { name: 'Finance', href: '/dashboard/finance', icon: DollarSign },
         { name: 'Settings', href: '/dashboard/settings', icon: Settings },
       ]
-    case 'tour_operator':
     case 'event_host':
+    case 'tour_operator':
       return [
         { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-        { name: 'My Events', href: '/dashboard/events', icon: Calendar },
+        { name: 'My Listing', href: '/dashboard/details', icon: Edit },
+        { name: 'Media', href: '/dashboard/media', icon: Upload },
+        { name: 'Reviews', href: '/dashboard/reviews', icon: Star },
         { name: 'Orders', href: '/dashboard/orders', icon: ShoppingCart },
+        { name: 'Finance', href: '/dashboard/finance', icon: DollarSign },
         { name: 'Settings', href: '/dashboard/settings', icon: Settings },
       ]
     default:
@@ -73,13 +122,6 @@ export function Sidebar() {
     const user = auth.getUser()
     if (user) {
       setNavigation(getRoleNavigation(user.role))
-      const roleLabels: Record<string, string> = {
-        admin: 'Admin',
-        bar: 'Bar Owner',
-        distillery: 'Distillery Owner',
-        tour_operator: 'Tour Operator',
-        event_host: 'Event Host',
-      }
       setUserRole(roleLabels[user.role] || 'Admin')
     }
   }, [])
@@ -127,7 +169,7 @@ export function Sidebar() {
           {/* Navigation */}
           <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
             {navigation.map((item) => {
-              const isActive = pathname === item.href
+              const isActive = isActiveRoute(pathname, item.href)
               return (
                 <Link
                   key={item.name}
@@ -174,7 +216,7 @@ export function Sidebar() {
           {/* Navigation */}
           <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
             {navigation.map((item) => {
-              const isActive = pathname === item.href
+              const isActive = isActiveRoute(pathname, item.href)
               return (
                 <Link
                   key={item.name}

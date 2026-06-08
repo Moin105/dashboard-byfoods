@@ -1,21 +1,23 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useQuery, useMutation, useQueryClient } from 'react-query'
 import { motion } from 'framer-motion'
-import { Plus, Search, Edit, Trash2, Eye, EyeOff } from 'lucide-react'
+import { Plus, Search, Settings, Trash2, Eye, EyeOff } from 'lucide-react'
 import { api } from '@/lib/api'
+import { auth } from '@/lib/auth'
+import { isSuperAdmin } from '@/lib/roles'
 import { Bar } from '@/lib/types'
-import { BarForm } from '@/components/BarForm'
-import { Modal } from '@/components/Modal'
 import toast from 'react-hot-toast'
 
 export default function BarsPage() {
   const [searchTerm, setSearchTerm] = useState('')
-  const [showForm, setShowForm] = useState(false)
-  const [editingBar, setEditingBar] = useState<Bar | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
+  const router = useRouter()
   const queryClient = useQueryClient()
+  const canCreate = isSuperAdmin(auth.getUser()?.role)
 
   const { data: barsData, isLoading } = useQuery(
     ['bars', currentPage, searchTerm],
@@ -58,11 +60,6 @@ export default function BarsPage() {
     }
   )
 
-  const handleEdit = (bar: Bar) => {
-    setEditingBar(bar)
-    setShowForm(true)
-  }
-
   const handleDelete = (id: number) => {
     if (confirm('Are you sure you want to delete this bar?')) {
       deleteMutation.mutate(id)
@@ -73,15 +70,8 @@ export default function BarsPage() {
     toggleActiveMutation.mutate({ id: bar.id, isActive: bar.isActive })
   }
 
-  const handleFormClose = () => {
-    setShowForm(false)
-    setEditingBar(null)
-  }
-
-  const handleFormSuccess = () => {
-    queryClient.invalidateQueries('bars')
-    handleFormClose()
-    toast.success(editingBar ? 'Bar updated successfully' : 'Bar created successfully')
+  const handleCreateNew = () => {
+    router.push('/dashboard/bars/new')
   }
 
   return (
@@ -92,13 +82,15 @@ export default function BarsPage() {
           <h1 className="text-2xl font-bold text-gray-900">Bars Management</h1>
           <p className="text-gray-600">Manage bars and lounges</p>
         </div>
-        <button
-          onClick={() => setShowForm(true)}
-          className="btn-primary"
-        >
-          <Plus className="h-5 w-5 mr-2" />
-          Add Bar
-        </button>
+        {canCreate && (
+          <button
+            onClick={handleCreateNew}
+            className="btn-primary"
+          >
+            <Plus className="h-5 w-5 mr-2" />
+            Add Bar
+          </button>
+        )}
       </div>
 
       {/* Search and Filters */}
@@ -135,7 +127,10 @@ export default function BarsPage() {
                   Location
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Rating
+                  Products
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Media
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Status
@@ -148,13 +143,13 @@ export default function BarsPage() {
             <tbody className="bg-white divide-y divide-gray-200">
               {isLoading ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-4 text-center">
+                  <td colSpan={7} className="px-6 py-4 text-center">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500 mx-auto"></div>
                   </td>
                 </tr>
               ) : barsData?.data?.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-4 text-center text-gray-500">
+                  <td colSpan={7} className="px-6 py-4 text-center text-gray-500">
                     No bars found
                   </td>
                 </tr>
@@ -181,11 +176,10 @@ export default function BarsPage() {
                       {bar.location}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      <div className="flex items-center">
-                        <span className="text-yellow-500">★</span>
-                        <span className="ml-1">{bar.rating}</span>
-                        <span className="ml-1 text-gray-500">({bar.reviews})</span>
-                      </div>
+                      {bar.products?.length || 0}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {bar.mediaGallery?.length || 0}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
@@ -198,21 +192,24 @@ export default function BarsPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div className="flex space-x-2">
-                        <button
-                          onClick={() => handleEdit(bar)}
+                        <Link
+                          href={`/dashboard/bars/${bar.id}`}
                           className="text-primary-600 hover:text-primary-900"
+                          title="Edit bar details"
                         >
-                          <Edit className="h-4 w-4" />
-                        </button>
+                          <Settings className="h-4 w-4" />
+                        </Link>
                         <button
                           onClick={() => handleToggleActive(bar)}
                           className="text-gray-600 hover:text-gray-900"
+                          title={bar.isActive ? 'Disable' : 'Enable'}
                         >
                           {bar.isActive ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                         </button>
                         <button
                           onClick={() => handleDelete(bar.id)}
                           className="text-red-600 hover:text-red-900"
+                          title="Delete bar"
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>
@@ -250,19 +247,6 @@ export default function BarsPage() {
           </div>
         )}
       </div>
-
-      {/* Bar Form Modal */}
-      <Modal
-        isOpen={showForm}
-        onClose={handleFormClose}
-        title={editingBar ? 'Edit Bar' : 'Add New Bar'}
-      >
-        <BarForm
-          bar={editingBar}
-          onSuccess={handleFormSuccess}
-          onCancel={handleFormClose}
-        />
-      </Modal>
     </div>
   )
 }

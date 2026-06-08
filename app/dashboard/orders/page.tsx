@@ -6,6 +6,7 @@ import { motion } from 'framer-motion'
 import { Search, Eye, CheckCircle, XCircle, Clock, Calendar } from 'lucide-react'
 import { api } from '@/lib/api'
 import { Order } from '@/lib/types'
+import { orderBookingFeeBreakdown } from '@/lib/booking-fees'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
 
@@ -100,6 +101,28 @@ export default function OrdersPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold text-gray-900">Orders & Customers</h1>
+        <button
+          onClick={async () => {
+            try {
+              const response = await api.get('/orders/export/csv', { responseType: 'blob' })
+              const blob = new Blob([response.data], { type: 'text/csv;charset=utf-8;' })
+              const url = window.URL.createObjectURL(blob)
+              const link = document.createElement('a')
+              link.href = url
+              link.setAttribute('download', `orders-${new Date().toISOString().split('T')[0]}.csv`)
+              document.body.appendChild(link)
+              link.click()
+              link.remove()
+              window.URL.revokeObjectURL(url)
+              toast.success('CSV downloaded')
+            } catch (error) {
+              toast.error('Failed to export CSV')
+            }
+          }}
+          className="px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600"
+        >
+          Export CSV
+        </button>
       </div>
 
       {/* Filters */}
@@ -150,10 +173,11 @@ export default function OrdersPage() {
           </div>
         </div>
         <div className="bg-white p-4 rounded-lg shadow-sm">
-          <div className="text-sm text-gray-600">Total Revenue</div>
+          <div className="text-sm text-gray-600">Paid ticket subtotal</div>
           <div className="text-2xl font-bold text-primary-600">
             ${orders.reduce((sum: number, o: Order) => sum + (o.isPaid ? o.totalAmount : 0), 0).toFixed(2)}
           </div>
+          <div className="text-xs text-gray-500 mt-1">Ticket total before per-ticket booking fee</div>
         </div>
       </div>
 
@@ -176,7 +200,13 @@ export default function OrdersPage() {
                   Guests
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Amount
+                  Tickets
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Booking fee
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Customer total
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Status
@@ -187,7 +217,9 @@ export default function OrdersPage() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {filteredOrders.map((order: Order) => (
+              {filteredOrders.map((order: Order) => {
+                const fee = orderBookingFeeBreakdown(order.totalAmount, order.numberOfGuests)
+                return (
                 <motion.tr
                   key={order.id}
                   initial={{ opacity: 0 }}
@@ -227,10 +259,18 @@ export default function OrdersPage() {
                     {order.numberOfGuests}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">${order.totalAmount}</div>
+                    <div className="text-sm font-medium text-gray-900">${fee.ticketSubtotal.toFixed(2)}</div>
                     <div className="text-xs text-gray-500">
                       {order.isPaid ? 'Paid' : 'Unpaid'}
                     </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm font-medium text-gray-900">${fee.bookingFeeTotal.toFixed(2)}</div>
+                    <div className="text-xs text-gray-500">${fee.bookingFeePerTicket.toFixed(0)} × {order.numberOfGuests}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm font-medium text-gray-900">${fee.customerChargedTotal.toFixed(2)}</div>
+                    <div className="text-xs text-gray-500">If paid online</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(order.status)}`}>
@@ -276,7 +316,7 @@ export default function OrdersPage() {
                     </div>
                   </td>
                 </motion.tr>
-              ))}
+              )})}
             </tbody>
           </table>
         </div>

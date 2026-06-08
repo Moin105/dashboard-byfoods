@@ -11,6 +11,13 @@ export interface LoginResponse {
   user: User
 }
 
+export interface InviteAdminPayload {
+  email: string
+  firstName: string
+  lastName: string
+  role?: string
+}
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001'
 
 export const auth = {
@@ -48,6 +55,25 @@ export const auth = {
     if (!response.ok) {
       const error = await response.json()
       throw new Error(error.message || 'Registration failed')
+    }
+
+    return response.json()
+  },
+
+  inviteAdmin: async (payload: InviteAdminPayload) => {
+    const token = auth.getToken()
+    const response = await fetch(`${API_BASE_URL}/auth/admin/invite`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: token ? `Bearer ${token}` : '',
+      },
+      body: JSON.stringify(payload),
+    })
+
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.message || 'Invite failed')
     }
 
     return response.json()

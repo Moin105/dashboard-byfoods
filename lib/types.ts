@@ -2,19 +2,20 @@ export interface Bar {
   id: number
   name: string
   type: string
-  rating: number
-  reviews: number
   location: string
   image: string
   isOpen: boolean
   priceRange: string
   specialties: string[]
+  products?: string[]
+  mediaGallery?: string[]
   description?: string
   address?: string
   phone?: string
   website?: string
   operatingHours?: Record<string, string>
   isActive: boolean
+  userId?: number
   createdAt: string
   updatedAt: string
 }
@@ -38,6 +39,7 @@ export interface Distillery {
   operatingHours?: Record<string, string>
   products?: string[]
   isActive: boolean
+  userId?: number
   createdAt: string
   updatedAt: string
 }
@@ -61,6 +63,7 @@ export interface Event {
   requirements?: string[]
   isActive: boolean
   isFeatured: boolean
+  userId?: number
   createdAt: string
   updatedAt: string
 }

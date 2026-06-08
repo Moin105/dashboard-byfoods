@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -40,7 +40,15 @@ interface FormData {
   termsAccepted: boolean
 }
 
-const businessTypes = [
+interface PlatformConfig {
+  id: number
+  key: string
+  label: string
+  value?: any
+}
+
+// Fallback static data if API fails
+const fallbackBusinessTypes = [
   'Bar',
   'Distillery',
   'Restaurant',
@@ -51,7 +59,7 @@ const businessTypes = [
   'Other'
 ]
 
-const experienceTypes = [
+const fallbackExperienceTypes = [
   'Tasting',
   'Tour',
   'Workshop',
@@ -60,11 +68,12 @@ const experienceTypes = [
   'Experience'
 ]
 
-const currencies = [
-  { value: 'JPY', label: 'JPY (¥)' },
+const fallbackCurrencies = [
+  { value: 'AUD', label: 'AUD ($)' },
   { value: 'USD', label: 'USD ($)' },
   { value: 'EUR', label: 'EUR (€)' },
   { value: 'GBP', label: 'GBP (£)' },
+  { value: 'JPY', label: 'JPY (¥)' },
   { value: 'INR', label: 'INR (₹)' },
 ]
 
@@ -74,6 +83,13 @@ export default function BusinessRegistrationForm() {
   const router = useRouter()
   const [currentStep, setCurrentStep] = useState(1)
   const [loading, setLoading] = useState(false)
+  const [configLoading, setConfigLoading] = useState(true)
+  
+  // Dynamic config from API
+  const [businessTypes, setBusinessTypes] = useState<string[]>(fallbackBusinessTypes)
+  const [experienceTypes, setExperienceTypes] = useState<string[]>(fallbackExperienceTypes)
+  const [currencies, setCurrencies] = useState<{ value: string; label: string }[]>(fallbackCurrencies)
+  
   const [formData, setFormData] = useState<FormData>({
     businessName: '',
     businessType: '',
@@ -92,12 +108,45 @@ export default function BusinessRegistrationForm() {
     duration: '',
     maxGuests: '',
     pricePerPerson: '',
-    currency: 'JPY',
+    currency: 'AUD',
     availabilityDays: [],
     startTime: '',
     stripeConnected: false,
     termsAccepted: false,
   })
+
+  // Fetch platform config on mount
+  useEffect(() => {
+    const fetchConfig = async () => {
+      try {
+        const [businessTypesRes, experienceTypesRes, currenciesRes] = await Promise.all([
+          api.get('/platform-config/business-types'),
+          api.get('/platform-config/experience-types'),
+          api.get('/platform-config/currencies'),
+        ])
+        
+        if (businessTypesRes.data?.length > 0) {
+          setBusinessTypes(businessTypesRes.data.map((c: PlatformConfig) => c.label))
+        }
+        if (experienceTypesRes.data?.length > 0) {
+          setExperienceTypes(experienceTypesRes.data.map((c: PlatformConfig) => c.label))
+        }
+        if (currenciesRes.data?.length > 0) {
+          setCurrencies(currenciesRes.data.map((c: PlatformConfig) => ({
+            value: c.key,
+            label: c.label,
+          })))
+        }
+      } catch (err) {
+        console.error('Error fetching platform config:', err)
+        // Keep fallback values
+      } finally {
+        setConfigLoading(false)
+      }
+    }
+
+    fetchConfig()
+  }, [])
 
   const [logoPreview, setLogoPreview] = useState<string | null>(null)
   const [venuePreviews, setVenuePreviews] = useState<string[]>([])

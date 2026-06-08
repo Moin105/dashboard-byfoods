@@ -69,3 +69,4 @@ jspm_packages/
 .env.production.local
 
 # Optional REPL history
+.dev.log

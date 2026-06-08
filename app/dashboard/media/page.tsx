@@ -6,6 +6,9 @@ import { motion } from 'framer-motion'
 import { Upload, Trash2, Download, Eye, Search } from 'lucide-react'
 import { api } from '@/lib/api'
 import toast from 'react-hot-toast'
+import { auth } from '@/lib/auth'
+import { isOwnerRole, isPlatformRole } from '@/lib/roles'
+import { EntityWorkspaceIndex } from '@/components/EntityWorkspaceIndex'
 
 interface MediaFile {
   filename: string
@@ -15,6 +18,15 @@ interface MediaFile {
 }
 
 export default function MediaPage() {
+  const user = auth.getUser()
+  if (isOwnerRole(user?.role) || isPlatformRole(user?.role)) {
+    return <EntityWorkspaceIndex mode="media" />
+  }
+
+  return <PlatformMediaLibrary />
+}
+
+function PlatformMediaLibrary() {
   const [searchTerm, setSearchTerm] = useState('')
   const [uploading, setUploading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
